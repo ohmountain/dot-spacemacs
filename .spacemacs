@@ -37,6 +37,7 @@ values."
      sql
      rust
      react
+     gtags
      ;; ----------------------------------------------------------------
      ;; Example of useful layers you may want to use right away.
      ;; Uncomment some layer names and press <SPC f e R> (Vim style) or
@@ -48,6 +49,7 @@ values."
      emacs-lisp
      git
      mu4e
+     org
      (markdown :variables markdown-live-preview-engine 'vmd)
      (go :variables go-tab-width 4)
      php
@@ -70,6 +72,7 @@ values."
    ;; configuration in `dotspacemacs/user-config'.
    dotspacemacs-additional-packages '(
                                       youdao-dictionary
+                                      mu4e-alert
                                       )
    ;; A list of packages that cannot be updated.
    dotspacemacs-frozen-packages '()
@@ -344,9 +347,9 @@ you should place your code here."
   (rainbow-mode nil)
 
   (setq mu4e-maildir "~/.mail"
-        mu4e-drafts-folder "/Draft"
-        mu4e-trash-folder "/Trash"
-        mu4e-sent-folder "/Sent"
+        mu4e-drafts-folder "/Drafts"
+        mu4e-trash-folder "/Deleted Messages"
+        mu4e-sent-folder "/Sent Messages"
         mu4e-refile-folder "/Archive"
         mu4e-get-mail-command "mbsync -a"
         mu4e-update-interval 300
@@ -361,7 +364,7 @@ you should place your code here."
         user-full-name  "田仁山"
         mu4e-compose-signature
         (concat
-         "田仁山\n"
+         "贵州远东 - 田仁山\n"
          "Email: tianrenshan@fe-cred.com\n"
          "From Emacs\n"
          "\n")
@@ -381,7 +384,7 @@ you should place your code here."
   (setq mu4e-view-show-images t)
 
   ;; save attachment to my desktop (this can also be a function)
-  (setq mu4e-attachment-dir "~/Downloads")
+  (setq mu4e-attachment-dir "~/Attachments")
 
   ;; notifcation
   (setq mu4e-enable-notifications t)
@@ -390,6 +393,60 @@ you should place your code here."
   (setq message-kill-buffer-on-exit t)
 
   (setq rust-format-on-save t)
+
+  (setq tramp-ssh-controlmaster-options
+        "-o ControlMaster=auto -o ControlPath='tramp.%%C' -o ControlPersist=no")
+  ;; define the refile targets
+  (defvar org-agenda-dir "" "gtd org files location")
+  (setq-default org-agenda-dir "~/Notes")
+  (setq org-agenda-file-note (expand-file-name "notes.org" org-agenda-dir))
+  (setq org-agenda-file-gtd (expand-file-name "gtd.org" org-agenda-dir))
+  (setq org-agenda-file-journal (expand-file-name "journal.org" org-agenda-dir))
+  (setq org-agenda-file-code-snippet (expand-file-name "snippet.org" org-agenda-dir))
+  (setq org-default-notes-file (expand-file-name "gtd.org" org-agenda-dir))
+  (setq org-agenda-files (list org-agenda-dir))
+
+  (with-eval-after-load 'org-agenda
+    (define-key org-agenda-mode-map (kbd "P") 'org-pomodoro)
+    (spacemacs/set-leader-keys-for-major-mode 'org-agenda-mode
+      "." 'spacemacs/org-agenda-transient-state/body)
+    )
+  ;; the %i would copy the selected text into the template
+  ;;http://www.howardism.org/Technical/Emacs/journaling-org.html
+  ;;add multi-file journal
+  (setq org-capture-templates
+        '(("t" "Todo" entry (file+headline org-agenda-file-gtd "Workspace")
+           "* TODO [#B] %?\n  %i\n"
+           :empty-lines 1)
+          ("n" "notes" entry (file+headline org-agenda-file-note "Quick notes")
+           "* %?\n  %i\n %U"
+           :empty-lines 1)
+          ("s" "Code Snippet" entry
+           (file org-agenda-file-code-snippet)
+           "* %?\t%^g\n#+BEGIN_SRC %^{language}\n\n#+END_SRC")
+          ("w" "works" entry (file+headline org-agenda-file-gtd "Works")
+           "* TODO [#A] %?\n  %i\n %U"
+           :empty-lines 1)
+          ("j" "Journal Entry"
+           entry (file+datetree org-agenda-file-journal)
+           "* %?"
+           :empty-lines 1)))
+
+  ;;An entry without a cookie is treated just like priority ' B '.
+  ;;So when create new task, they are default 重要且紧急
+  (setq org-agenda-custom-commands
+        '(
+          ("w" . "任务安排")
+          ("wa" "重要且紧急的任务" tags-todo "+PRIORITY=\"A\"")
+          ("wb" "重要且不紧急的任务" tags-todo "-Weekly-Monthly-Daily+PRIORITY=\"B\"")
+          ("wc" "不重要且紧急的任务" tags-todo "+PRIORITY=\"C\"")
+          ("p" . "项目安排")
+          ("pw" tags-todo "PROJECT+WORK+CATEGORY=\"项目\"")
+          ("W" "Weekly Review"
+           ((stuck "") ;; review stuck projects as designated by org-stuck-projects
+            (tags-todo "PROJECT") ;; review all projects (assuming you use todo keywords to designate projects)
+            ))))
+
   )
 
 ;; Do not write anything past this comment. This is where Emacs will
@@ -405,7 +462,7 @@ you should place your code here."
  '(evil-want-Y-yank-to-eol nil)
  '(package-selected-packages
    (quote
-    (github-modern-theme xpm cherry-blossom-theme ghub let-alist company-emacs-eclim eclim mu4e-maildirs-extension mu4e-alert ht alert log4e gntp rainbow-mode rainbow-identifiers color-identifiers-mode youdao-dictionary names chinese-word-at-point pos-tip web-beautify livid-mode skewer-mode simple-httpd json-mode json-snatcher json-reformat js2-refactor multiple-cursors js2-mode js-doc company-tern dash-functional tern coffee-mode yaml-mode vmd-mode web-mode tagedit slim-mode scss-mode sass-mode pug-mode less-css-mode helm-css-scss haml-mode emmet-mode company-web web-completion-data sql-indent wakatime-mode unfill mwim helm-company helm-c-yasnippet fuzzy company-statistics company-go company auto-yasnippet ac-ispell auto-complete toml-mode racer cargo rust-mode smeargle phpunit phpcbf php-extras php-auto-yasnippets yasnippet orgit mmm-mode markdown-toc markdown-mode magit-gitflow helm-gitignore go-guru go-eldoc go-mode gitignore-mode gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link gh-md evil-magit magit magit-popup git-commit with-editor drupal-mode php-mode ws-butler winum volatile-highlights vi-tilde-fringe uuidgen use-package toc-org spaceline powerline restart-emacs request rainbow-delimiters popwin persp-mode pcre2el paradox spinner org-bullets open-junk-file neotree move-text macrostep lorem-ipsum linum-relative link-hint info+ indent-guide hungry-delete hl-todo highlight-parentheses highlight-numbers parent-mode highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make projectile pkg-info epl helm-flx helm-descbinds helm-ag google-translate golden-ratio flx-ido flx fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-tutor evil-surround evil-search-highlight-persist evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state smartparens evil-indent-plus evil-iedit-state iedit evil-exchange evil-escape evil-ediff evil-args evil-anzu anzu evil goto-chg eval-sexp-fu highlight elisp-slime-nav dumb-jump diminish define-word column-enforce-mode clean-aindent-mode bind-map bind-key auto-highlight-symbol auto-compile packed ace-link ace-jump-helm-line helm helm-core popup which-key undo-tree org-plus-contrib hydra evil-unimpaired f s dash async aggressive-indent adaptive-wrap ace-window avy)))
+    (org-projectile org-category-capture org-present org-pomodoro org-mime org-download htmlize gnuplot helm-gtags ggtags github-modern-theme xpm cherry-blossom-theme ghub let-alist company-emacs-eclim eclim mu4e-maildirs-extension mu4e-alert ht alert log4e gntp rainbow-mode rainbow-identifiers color-identifiers-mode youdao-dictionary names chinese-word-at-point pos-tip web-beautify livid-mode skewer-mode simple-httpd json-mode json-snatcher json-reformat js2-refactor multiple-cursors js2-mode js-doc company-tern dash-functional tern coffee-mode yaml-mode vmd-mode web-mode tagedit slim-mode scss-mode sass-mode pug-mode less-css-mode helm-css-scss haml-mode emmet-mode company-web web-completion-data sql-indent wakatime-mode unfill mwim helm-company helm-c-yasnippet fuzzy company-statistics company-go company auto-yasnippet ac-ispell auto-complete toml-mode racer cargo rust-mode smeargle phpunit phpcbf php-extras php-auto-yasnippets yasnippet orgit mmm-mode markdown-toc markdown-mode magit-gitflow helm-gitignore go-guru go-eldoc go-mode gitignore-mode gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link gh-md evil-magit magit magit-popup git-commit with-editor drupal-mode php-mode ws-butler winum volatile-highlights vi-tilde-fringe uuidgen use-package toc-org spaceline powerline restart-emacs request rainbow-delimiters popwin persp-mode pcre2el paradox spinner org-bullets open-junk-file neotree move-text macrostep lorem-ipsum linum-relative link-hint info+ indent-guide hungry-delete hl-todo highlight-parentheses highlight-numbers parent-mode highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make projectile pkg-info epl helm-flx helm-descbinds helm-ag google-translate golden-ratio flx-ido flx fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-tutor evil-surround evil-search-highlight-persist evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state smartparens evil-indent-plus evil-iedit-state iedit evil-exchange evil-escape evil-ediff evil-args evil-anzu anzu evil goto-chg eval-sexp-fu highlight elisp-slime-nav dumb-jump diminish define-word column-enforce-mode clean-aindent-mode bind-map bind-key auto-highlight-symbol auto-compile packed ace-link ace-jump-helm-line helm helm-core popup which-key undo-tree org-plus-contrib hydra evil-unimpaired f s dash async aggressive-indent adaptive-wrap ace-window avy)))
  '(send-mail-function (quote mailclient-send-it))
  '(wakatime-python-bin nil))
 (custom-set-faces
